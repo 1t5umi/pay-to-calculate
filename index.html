@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pay to Calculate</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body {
+      background-color: #000000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #ffffff;
+      padding: 12px;
+    }
+    .calculator {
+      width: 100%;
+      max-width: 360px;
+      background-color: #000000;
+      border-radius: 40px;
+      padding: 24px 16px 28px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px #222222;
+    }
+    .display {
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      padding: 10px 10px 20px;
+      word-break: break-all;
+    }
+    .formula {
+      font-size: 20px;
+      color: #8e8e93;
+      min-height: 28px;
+      margin-bottom: 6px;
+    }
+    .result {
+      font-size: 54px;
+      font-weight: 300;
+      line-height: 1.05;
+      color: #ffffff;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    button.btn {
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      outline: none;
+      transition: filter 0.12s, transform 0.08s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button.btn:active {
+      filter: brightness(1.35);
+      transform: scale(0.95);
+    }
+    .btn-num { background-color: #333333; color: #ffffff; }
+    .btn-fn { background-color: #555555; color: #ffffff; font-size: 22px; }
+    .btn-op { background-color: #ff9f0a; color: #ffffff; font-size: 32px; }
+
+    /* In-App Purchase Modal */
+    .modal-overlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      border-radius: 40px;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-card {
+      background: #1c1c1e;
+      border: 1px solid #333336;
+      border-radius: 24px;
+      width: 100%;
+      padding: 24px 20px 20px;
+      text-align: center;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+    }
+    .modal-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: #ff9f0a;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .modal-title {
+      font-size: 19px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .modal-desc {
+      font-size: 12px;
+      color: #a1a1a6;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
+    .plan-box {
+      background: #2c2c2e;
+      border: 1px solid #3a3a3c;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      text-align: center;
+    }
+    .plan-name { font-size: 14px; font-weight: 700; color: #ffffff; }
+    .plan-sub { font-size: 11px; color: #8e8e93; margin-top: 3px; }
+    .modal-alert {
+      color: #ff453a;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .btn-pay {
+      background: #ff9f0a;
+      color: #000000;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-pay:hover { background: #ffb340; }
+    .btn-close {
+      background: transparent;
+      color: #8e8e93;
+      font-size: 13px;
+      padding: 10px;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 4px;
+    }
+    .btn-close:hover { color: #ffffff; }
+  </style>
+</head>
+<body>
+
+  <div class="calculator">
+    <div class="display">
+      <div class="formula" id="formula"></div>
+      <div class="result" id="result">0</div>
+    </div>
+
+    <div class="grid">
+      <button class="btn btn-fn" onclick="handleBackspace()">⌫</button>
+      <button class="btn btn-fn" onclick="showProModal('AC')">AC</button>
+      <button class="btn btn-fn" onclick="showProModal('%')">%</button>
+      <button class="btn btn-op" onclick="handleOp('/')">÷</button>
+
+      <button class="btn btn-num" onclick="handleNum('7')">7</button>
+      <button class="btn btn-num" onclick="handleNum('8')">8</button>
+      <button class="btn btn-num" onclick="handleNum('9')">9</button>
+      <button class="btn btn-op" onclick="handleOp('*')">×</button>
+
+      <button class="btn btn-num" onclick="handleNum('4')">4</button>
+      <button class="btn btn-num" onclick="handleNum('5')">5</button>
+      <button class="btn btn-num" onclick="handleNum('6')">6</button>
+      <button class="btn btn-op" onclick="handleOp('-')">−</button>
+
+      <button class="btn btn-num" onclick="handleNum('1')">1</button>
+      <button class="btn btn-num" onclick="handleNum('2')">2</button>
+      <button class="btn btn-num" onclick="handleNum('3')">3</button>
+      <button class="btn btn-op" onclick="handleOp('+')">+</button>
+
+      <button class="btn btn-num" onclick="showProModal('+/-')">⁺/₋</button>
+      <button class="btn btn-num" onclick="handleNum('0')">0</button>
+      <button class="btn btn-num" onclick="handleNum('.')">.</button>
+      <button class="btn btn-op" onclick="handleEqual()">=</button>
+    </div>
+
+    <!-- In-App Purchase Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-card">
+        <div class="modal-badge" id="modalBadge">IN-APP PURCHASE</div>
+        <div class="modal-title" id="modalTitle">Unlimited Access</div>
+        <div class="modal-desc" id="modalDesc">
+          You have reached your free calculation limit.<br>Upgrade to continue calculating.
+        </div>
+        
+        <div class="plan-box">
+          <div class="plan-name" id="planName">Pro Monthly • $0.99 / mo</div>
+          <div class="plan-sub" id="planSub">Auto-renews monthly. Cancel anytime.</div>
+        </div>
+
+        <div class="modal-alert" id="modalAlert">
+          ⚠️ Transaction Failed: Payment service unavailable.
+        </div>
+
+        <button class="btn-pay" id="modalPayBtn" onclick="handlePayClick()">Subscribe — $0.99/mo</button>
+        <button class="btn-close" onclick="closeModal()">Not Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentInput = "0";
+    let firstOperand = null;
+    let currentOperator = null;
+    let shouldResetInput = false;
+    let calculationCount = 0;
+
+    const formulaEl = document.getElementById("formula");
+    const resultEl = document.getElementById("result");
+    const modalOverlay = document.getElementById("modalOverlay");
+    const modalBadge = document.getElementById("modalBadge");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalDesc = document.getElementById("modalDesc");
+    const planName = document.getElementById("planName");
+    const planSub = document.getElementById("planSub");
+    const modalAlert = document.getElementById("modalAlert");
+    const modalPayBtn = document.getElementById("modalPayBtn");
+
+    const opSymbols = { "+": "+", "-": "−", "*": "×", "/": "÷" };
+
+    function formatNumber(numStr) {
+      if (!numStr) return numStr;
+      const parts = String(numStr).split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      return parts.join(".");
+    }
+
+    function updateDisplay() {
+      resultEl.innerText = formatNumber(currentInput);
+    }
+
+    function handleNum(digit) {
+      if (shouldResetInput) {
+        currentInput = digit === "." ? "0." : digit;
+        shouldResetInput = false;
+      } else {
+        if (digit === "." && currentInput.includes(".")) return;
+        currentInput = (currentInput === "0" && digit !== ".") ? digit : currentInput + digit;
+      }
+      updateDisplay();
+    }
+
+    function handleBackspace() {
+      if (shouldResetInput) return;
+      currentInput = currentInput.length > 1 ? currentInput.slice(0, -1) : "0";
+      updateDisplay();
+    }
+
+    function handleOp(op) {
+      if (firstOperand !== null && currentOperator && !shouldResetInput) {
+        calculate(false, () => {
+          firstOperand = parseFloat(currentInput);
+          currentOperator = op;
+          formulaEl.innerText = `${formatNumber(String(firstOperand))} ${opSymbols[op]}`;
+          shouldResetInput = true;
+        });
+        return;
+      }
+      firstOperand = parseFloat(currentInput);
+      currentOperator = op;
+      formulaEl.innerText = `${formatNumber(String(firstOperand))} ${opSymbols[op]}`;
+      shouldResetInput = true;
+    }
+
+    function handleEqual() {
+      if (firstOperand === null || currentOperator === null) return;
+      calculate(true);
+    }
+
+    function showProModal(featureName) {
+      modalBadge.innerText = "PRO FEATURE";
+      modalTitle.innerText = "Unlock Pro Functions";
+      modalDesc.innerHTML = `${featureName} requires a Calculator Pro subscription.`;
+      planName.innerText = "Lifetime Pro Pass • $1.99";
+      planSub.innerText = "One-time purchase. Instant access.";
+      modalPayBtn.innerText = "Unlock for $1.99";
+      modalAlert.style.display = "none";
+      modalOverlay.classList.add("show");
+    }
+
+    async function calculate(isFinalEqual = true, nextCallback = null) {
+      if (calculationCount >= 1) {
+        modalBadge.innerText = "IN-APP PURCHASE";
+        modalTitle.innerText = "Unlimited Access";
+        modalDesc.innerHTML = "You have reached your free calculation limit.<br>Upgrade to continue calculating.";
+        planName.innerText = "Pro Monthly • $0.99 / mo";
+        planSub.innerText = "Auto-renews monthly. Cancel anytime.";
+        modalPayBtn.innerText = "Subscribe — $0.99/mo";
+        modalAlert.style.display = "none";
+        modalOverlay.classList.add("show");
+        return;
+      }
+
+      const a = firstOperand;
+      const b = parseFloat(currentInput);
+      const op = currentOperator;
+
+      formulaEl.innerText = `${formatNumber(String(a))} ${opSymbols[op]} ${formatNumber(String(b))}`;
+
+      let result;
+      // calculator.py 백엔드 호출 시도
+      const response = await fetch("/api/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ a, b, op })
+      }).catch(() => null);
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data.status === "premium") {
+          showProModal(data.feature);
+          return;
+        }
+        result = data.result;
+      } else {
+        // 정적 배포(GitHub Pages / file://) 환경용 폴백
+        if (op === "/" && b === 0) {
+          showProModal("Division by zero");
+          return;
+        }
+        if (op === "+") result = a + b;
+        else if (op === "-") result = a - b;
+        else if (op === "*") result = a * b;
+        else if (op === "/") result = a / b;
+        result = Number(Math.round(result + "e10") + "e-10");
+      }
+
+      currentInput = String(result);
+      updateDisplay();
+      calculationCount++;
+
+      if (isFinalEqual) {
+        firstOperand = null;
+        currentOperator = null;
+        shouldResetInput = true;
+      }
+      if (nextCallback) nextCallback();
+    }
+
+    function handlePayClick() {
+      modalAlert.style.display = "block";
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove("show");
+    }
+  </script>
+</body>
+</html>
